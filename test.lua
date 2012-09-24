@@ -1,6 +1,5 @@
-local Kernel = require('./kernel')
-local Timer = require('timer')
-local UV = require('uv')
+local lev = require('lev')
+local Kernel = require('kernel')
 local Table = require('table')
 Kernel.cache_lifetime = 0 -- disable cache
 

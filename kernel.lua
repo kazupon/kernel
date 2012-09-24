@@ -4,8 +4,8 @@
 -- - function (always async, can pass in args)
 -- - block always async, can have extra args and gets
 
-local FS = require('fs')
-local Timer = require('timer')
+local lev = require('lev')
+local fs = lev.fs
 local Table = require('table')
 local Math = require('math')
 
@@ -26,7 +26,8 @@ local Kernel = {
 
 -- Load a file from disk and compile into executable template
 local function compile(filename, callback)
-  FS.readFile(filename, function (err, source)
+  fs.readFile(filename, function (err, buf) 
+    local source = buf:toString()
     if err then return callback(err) end
     local template;
     local tokens = Kernel.tokenizer(source)
@@ -35,7 +36,7 @@ local function compile(filename, callback)
     -- p("parsed", tokens)
     local code = [[
 local Table = require('table')
-local this = require(']] .. __filename .. [[').helpers
+local this = require(']] .. 'kernel' .. [[').helpers
 setmetatable(this,{__index=_G})
 return ]] .. Kernel.generator(tokens, filename)
     -- p("code")
@@ -84,9 +85,12 @@ function Kernel.compile(filename, callback)
     if not err and Kernel.cache_lifetime > 0 then
       templateCache[filename] = template
       -- Make sure cached values expire eventually.
-      Timer.setTimeout(Kernel.cache_lifetime, function ()
+      local timer = lev.timer:new()
+      timer:start(function (t, status)
         templateCache[filename] = nil
-      end)
+        timer:close()
+      end, Kernel.cache_lifetime)
+      timer:stop()
     end
 
     -- The batch is complete, clear it out and execute the callbacks.
